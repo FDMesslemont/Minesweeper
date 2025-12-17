@@ -26,6 +26,7 @@ def game_cell(root , cell_values , x , y , cell_dict , cell_shown):
     cell = tk.Button(root , image=brick, command=partial(on_click ,x,y , cell_dict, cell_values , root , cell_shown),
                      bg="lightgray" , disabledforeground="lightgray" , overrelief="raised" , activebackground="pink" , activeforeground="white")
     cell.image = brick
+    cell.bind("<ButtonRelease-3>", partial(handle_flag , x , y , cell_dict , cell_shown))
     return cell
 
 # Assigns which cells are mines
@@ -51,10 +52,11 @@ def set_values(root , rows, cols, cell_values , cell_dict , cell_shown):
             #Next value reset
             value = 0
 
-            #Skip if it's a mine
+            #Create the cell for a mine, but it's value is already 'Mine'
             if cell_values[x][y] == 'M':
                 cell_values[x][y] = 'M'
-                cell_dict[(x,y)] = (game_cell(root , cell_values , x , y, cell_dict , cell_shown)).grid(row=x , column=y)
+                cell_dict[(x,y)] = (game_cell(root , cell_values , x , y, cell_dict , cell_shown))
+                cell_dict[(x,y)].grid(row=x , column=y)
                 cell_shown[(x,y)] = False
                 continue
 
@@ -69,7 +71,7 @@ def set_values(root , rows, cols, cell_values , cell_dict , cell_shown):
                 value +=1
             if (x < rows-1) and (y < cols-1) and cell_values[x+1][y+1] == 'M':
                 value +=1
-            if (y < rows-1) and cell_values[x][y+1] == 'M':
+            if (y < cols-1) and cell_values[x][y+1] == 'M':
                 value += 1
             if (x > 0) and (y < cols-1) and cell_values[x-1][y+1] == 'M':
                 value += 1
@@ -94,7 +96,6 @@ def on_click(x , y , cell_dict, cell_values , root , cell_shown):
 
 # Displays cell value, if 0 then all neighbouring cells must be displayed until a non-0 value is encountered
 def safe_cell(x , y , cell_values, cell_dict , cell_shown):
-   
    #Prevents us from checking already exposed cells
     if cell_shown[(x,y)] == False and ((x,y) not in flags):
         #Reveal the cell value by updating the image, add cell to our dict of exposed cells
@@ -129,24 +130,39 @@ def safe_cell(x , y , cell_values, cell_dict , cell_shown):
                 cell_shown[(x,y)] = True
 
                 #Check neighbour cells, starting TL and going clockwise - can't call func if there is no neighbouring cell
-                # if (x > 0) and (y > 0):
-                #     safe_cell(x-1 , y-1 , cell_values , cell_dict , cell_shown)
+                if (x > 0) and (y > 0):
+                    safe_cell(x-1 , y-1 , cell_values , cell_dict , cell_shown)
                 if (y > 0):
                     safe_cell(x , y-1 , cell_values , cell_dict , cell_shown)
-                # if (x < rows-1) and (y > 0) :
-                #     safe_cell(x+1 , y-1 , cell_values , cell_dict , cell_shown)
+                if (x < rows-1) and (y > 0) :
+                    safe_cell(x+1 , y-1 , cell_values , cell_dict , cell_shown)
                 if (x < rows-1) :
                     safe_cell(x+1 , y , cell_values , cell_dict , cell_shown)
-                # if (x < rows-1) and (y < cols-1):
-                #     safe_cell(x+1 , y+1 , cell_values , cell_dict , cell_shown)
+                if (x < rows-1) and (y < cols-1):
+                    safe_cell(x+1 , y+1 , cell_values , cell_dict , cell_shown)
                 if (y < rows-1):
                     safe_cell(x , y+1 , cell_values , cell_dict , cell_shown)
-                # if (x > 0) and (y < cols-1):
-                #     safe_cell(x-1 , y+1 , cell_values , cell_dict , cell_shown)
+                if (x > 0) and (y < cols-1):
+                    safe_cell(x-1 , y+1 , cell_values , cell_dict , cell_shown)
                 if (x > 0):
                     safe_cell(x-1 , y , cell_values , cell_dict , cell_shown)
 
-
+def handle_flag(x , y , cell_dict , cell_shown , event):
+    #Check if unexposed
+    if cell_shown[(x,y)] == False:
+        #If not flagged, flag
+        if (x,y) not in flags:
+            flags.append((x,y))
+            cell_dict[(x,y)].config(image=flagged)
+            cell_dict[(x,y)]['state'] = tk.DISABLED
+        #if flagged, unflag
+        else:
+            flags.remove((x,y))
+            cell_dict[(x,y)].config(image=brick)
+            cell_dict[(x,y)]['state'] = tk.ACTIVE
+    #Can't flag exposed cells
+    else:
+        pass
 
 def game_over(root):
     for ele in root.winfo_children():
@@ -163,6 +179,8 @@ def main():
     root = tk.Tk()
     root.title = "MINESWEEPER GAME"
 
+    global flagged
+    flagged = tk.PhotoImage(file="flag.png")
     global score0
     score0 = tk.PhotoImage(file="0.png")
     global score1
@@ -184,9 +202,9 @@ def main():
 
     # Grid Parameters
     global rows
-    rows = 10
+    rows = 15
     global cols
-    cols = 10
+    cols = 12
     mine_count = 20
     # True values of the cells
     cell_values = [[0 for y in range(cols)] for x in range(rows)]
